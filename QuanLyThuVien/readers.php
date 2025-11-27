@@ -1,7 +1,8 @@
 <?php
 require_once 'functions.php';
 require_login();
-require_role(['thuthu','admin']);
+require_role(['thuthu','admin','capthe']); // thêm 'capthe' vào đây
+
 
 global $pdo;
 

@@ -59,14 +59,25 @@ function require_role(array $allowedRoles) {
 function audit_log($action, $detail = null) {
     global $pdo;
 
+    // Nếu chưa có kết nối PDO thì bỏ qua
+    if (!isset($pdo) || !$pdo) {
+        return;
+    }
+
     $user_id = $_SESSION['user_id'] ?? null;
 
     if ($detail !== null && $detail !== '') {
         $action = $action . ' - ' . $detail;
     }
 
-    $stmt = $pdo->prepare("INSERT INTO audit_log (user_id, action) VALUES (?, ?)");
-    $stmt->execute([$user_id, $action]);
+    try {
+        $stmt = $pdo->prepare("INSERT INTO audit_log (user_id, action) VALUES (?, ?)");
+        $stmt->execute([$user_id, $action]);
+    } catch (PDOException $e) {
+        // Nếu MySQL "has gone away" hoặc lỗi khác -> bỏ qua, không cho trang bị crash
+        // Có thể log ra file nếu muốn, nhưng không echo ra màn hình
+        // file_put_contents('audit_error.log', $e->getMessage() . PHP_EOL, FILE_APPEND);
+    }
 }
 
 /**
