@@ -1,7 +1,13 @@
 <?php
 require_once 'functions.php';
 require_login();
+require_role(['thuthu','admin']);
 
+require_once __DIR__ . '/dao/BookDAO.php';
+global $pdo;
+$bookDao = new BookDAO($pdo);
+
+// Lấy id
 $id = intval($_GET['id'] ?? 0);
 if (!$id) {
     header('Location: books.php');
@@ -9,44 +15,46 @@ if (!$id) {
 }
 
 // Lấy thông tin sách
-$stmt = $pdo->prepare("SELECT * FROM books WHERE id = ?");
-$stmt->execute([$id]);
-$b = $stmt->fetch(PDO::FETCH_ASSOC);
+$b = $bookDao->findById($id);
 if (!$b) {
+    flash_set('error', 'Không tìm thấy sách.');
     header('Location: books.php');
     exit;
 }
 
-// Lấy danh sách thể loại
+// Lấy thể loại
 $cats = $pdo->query("SELECT id, name FROM categories ORDER BY name")->fetchAll();
-$err = '';
+$err  = '';
 
+// Xử lý submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!check_csrf($_POST['csrf'] ?? '')) {
         $err = 'Token không hợp lệ.';
     } else {
-        $title       = trim($_POST['title'] ?? '');
-        $author      = trim($_POST['author'] ?? '');
+        $code        = trim($_POST['code'] ?? $b['code']);
+        $title       = trim($_POST['title'] ?? $b['title']);
+        $author      = trim($_POST['author'] ?? $b['author']);
         $category_id = $_POST['category_id'] ?: null;
         $total       = max(0, intval($_POST['total'] ?? $b['total']));
-        $isbn        = trim($_POST['isbn'] ?? '');
 
-        if ($title === '') {
-            $err = 'Tiêu đề không được để trống.';
+        if ($code === '' || $title === '' || $author === '') {
+            $err = 'Mã sách, tiêu đề, tác giả không được để trống.';
         } else {
-            // cập nhật available nếu tổng thay đổi
+            // cập nhật available theo chênh lệch total
             $available = $b['available'] + ($total - $b['total']);
-            if ($available < 0) {
-                $available = 0;
-            }
+            if ($available < 0) $available = 0;
 
-            $stmt = $pdo->prepare("
-                UPDATE books
-                SET title = ?, author = ?, category_id = ?, total = ?, available = ?, isbn = ?
-                WHERE id = ?
-            ");
-            $stmt->execute([$title, $author, $category_id, $total, $available, $isbn, $id]);
+            $data = [
+                'code'        => $code,
+                'title'       => $title,
+                'author'      => $author,
+                'category_id' => $category_id,
+                'total'       => $total,
+                'available'   => $available,
+                'cover'       => $b['cover'] ?? null,
+            ];
 
+            $bookDao->update($id, $data);
             audit_log('edit_book', "Edited book id=$id title=$title");
             flash_set('success', 'Cập nhật sách thành công.');
             header('Location: books.php');
@@ -72,6 +80,11 @@ include 'header.php';
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
 
       <div class="form-group">
+        <label>Mã sách <span class="required">*</span></label>
+        <input name="code" value="<?= e($_POST['code'] ?? $b['code']) ?>" required>
+      </div>
+
+      <div class="form-group">
         <label>Tiêu đề <span class="required">*</span></label>
         <input name="title" value="<?= e($_POST['title'] ?? $b['title']) ?>" required>
       </div>
@@ -87,9 +100,7 @@ include 'header.php';
           <option value="">-- Chọn thể loại --</option>
           <?php foreach ($cats as $c): ?>
             <option value="<?= e($c['id']) ?>"
-              <?= ((isset($_POST['category_id']) && $_POST['category_id'] == $c['id'])
-                   || (!isset($_POST['category_id']) && $b['category_id'] == $c['id']))
-                   ? 'selected' : '' ?>>
+              <?= (($_POST['category_id'] ?? $b['category_id']) == $c['id']) ? 'selected' : '' ?>>
               <?= e($c['name']) ?>
             </option>
           <?php endforeach; ?>
@@ -101,11 +112,6 @@ include 'header.php';
         <input type="number" name="total" min="0"
                value="<?= e($_POST['total'] ?? $b['total']) ?>">
         <small>Hiện còn: <?= e($b['available']) ?> bản. Hệ thống sẽ tự điều chỉnh khi bạn thay đổi tổng.</small>
-      </div>
-
-      <div class="form-group">
-        <label>ISBN</label>
-        <input name="isbn" value="<?= e($_POST['isbn'] ?? $b['isbn']) ?>">
       </div>
 
       <div class="form-actions">

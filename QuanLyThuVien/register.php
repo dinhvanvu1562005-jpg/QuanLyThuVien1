@@ -1,35 +1,42 @@
 <?php
 require_once 'functions.php';
+require_once 'dao/UserDAO.php';
+
+global $pdo;
+$userDAO = new UserDAO($pdo);
 
 $err = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fullname = trim($_POST['fullname']);
-    $email    = trim($_POST['email']);
-    $phone    = trim($_POST['phone']);
-    $password = $_POST['password'];
-    $confirm  = $_POST['confirm'];
+    $fullname = trim($_POST['fullname'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
+    $phone    = trim($_POST['phone'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm  = $_POST['confirm'] ?? '';
 
     if ($fullname === '' || ($email === '' && $phone === '') || $password === '' || $confirm === '') {
         $err = 'Vui lòng nhập đầy đủ thông tin.';
     } elseif ($password !== $confirm) {
         $err = 'Mật khẩu xác nhận không khớp.';
     } else {
-        global $pdo;
-
-        // Kiểm tra trùng email / sđt
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
-        $stmt->execute([$email, $phone]);
-
-        if ($stmt->fetch()) {
+        // Kiểm tra trùng email / sđt qua DAO
+        if ($userDAO->existsEmailOrPhone($email ?: null, $phone ?: null)) {
             $err = 'Email hoặc số điện thoại đã tồn tại.';
         } else {
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare(
-                "INSERT INTO users (fullname, email, phone, username, password) VALUES (?, ?, ?, ?, ?)"
+            // Mặc định username = phone hoặc email
+            $username = $phone !== '' ? $phone : $email;
+
+            // Tạo tài khoản mới, role mặc định là 'thuthu'
+            $userDAO->createWithContact(
+                $fullname,
+                $email ?: null,
+                $phone ?: null,
+                $username,
+                $password,
+                'thuthu'
             );
-            $stmt->execute([$fullname, $email, $phone, $phone ?: $email, $hash]);
+
             $success = 'Đăng ký thành công! Bạn có thể đăng nhập ngay.';
         }
     }
@@ -67,7 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php endif; ?>
 
       <form method="post" autocomplete="off">
-        <input type="text" name="fullname" placeholder="Họ và tên" required autocomplete="off">
+        <input type="text"
+               name="fullname"
+               placeholder="Họ và tên"
+               required
+               autocomplete="off"
+               value="<?= htmlspecialchars($_POST['fullname'] ?? '') ?>">
 
         <div class="signup-method">
           <label>
@@ -80,8 +92,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </label>
         </div>
 
-        <input type="email" id="emailField" name="email" placeholder="Email" required autocomplete="off">
-        <input type="text" id="phoneField" name="phone" placeholder="Số điện thoại" style="display:none;" autocomplete="off">
+        <input type="email"
+               id="emailField"
+               name="email"
+               placeholder="Email"
+               autocomplete="off"
+               value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+
+        <input type="text"
+               id="phoneField"
+               name="phone"
+               placeholder="Số điện thoại"
+               style="display:none;"
+               autocomplete="off"
+               value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
 
         <input type="password" name="password" placeholder="Mật khẩu" required autocomplete="new-password">
         <input type="password" name="confirm" placeholder="Xác nhận mật khẩu" required autocomplete="new-password">
@@ -96,3 +120,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="assets/register.js"></script>
 </body>
 </html>
+

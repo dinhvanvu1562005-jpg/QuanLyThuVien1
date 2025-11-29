@@ -3,7 +3,9 @@ require_once 'functions.php';
 require_login();
 require_role(['thuthu','admin']);
 
+require_once __DIR__ . '/dao/ReaderDAO.php';
 global $pdo;
+$readerDao = new ReaderDAO($pdo);
 
 $err = '';
 
@@ -18,14 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($fullname === '') {
             $err = 'Họ và tên không được để trống.';
         } else {
-            // Chèn vào bảng readers: id, fullname, email, phone
-            $stmt = $pdo->prepare("
-                INSERT INTO readers (fullname, email, phone)
-                VALUES (?, ?, ?)
-            ");
-            $stmt->execute([$fullname, $email, $phone]);
+            $newId = $readerDao->insert([
+                'fullname' => $fullname,
+                'email'    => $email,
+                'phone'    => $phone,
+            ]);
 
-            audit_log('add_reader', "Added reader: $fullname (id=" . $pdo->lastInsertId() . ")");
+            audit_log('add_reader', "Added reader id=$newId name=$fullname");
             flash_set('success', 'Thêm bạn đọc thành công.');
             header('Location: readers.php');
             exit;
@@ -73,3 +74,4 @@ include 'header.php';
 </div>
 
 <?php include 'footer.php'; ?>
+

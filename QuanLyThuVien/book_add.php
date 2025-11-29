@@ -3,32 +3,30 @@ require_once 'functions.php';
 require_login();
 require_role(['thuthu','admin']);
 
+require_once __DIR__ . '/dao/BookDAO.php';
 global $pdo;
+$bookDao = new BookDAO($pdo);
 
 // Lấy danh sách thể loại
-$cats = $pdo->query("SELECT id, name FROM categories ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+$cats = $pdo->query("SELECT id, name FROM categories ORDER BY name")->fetchAll();
+$err  = '';
 
-$err = '';
-
+// XỬ LÝ FORM
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!check_csrf($_POST['csrf'] ?? '')) {
         $err = 'Token không hợp lệ.';
     } else {
-        // ----- LẤY DỮ LIỆU TỪ FORM -----
-        $code        = trim($_POST['code'] ?? '');        // Mã sách
+        $code        = trim($_POST['code'] ?? '');
         $title       = trim($_POST['title'] ?? '');
         $author      = trim($_POST['author'] ?? '');
         $category_id = $_POST['category_id'] ?: null;
-        $total       = max(1, intval($_POST['total'] ?? 1));  // Tổng số bản (>=1)
+        $total       = max(1, intval($_POST['total'] ?? 1));
         $cover       = null;
 
-        // ----- KIỂM TRA -----
-        if ($code === '') {
-            $err = 'Mã sách không được để trống.';
-        } elseif ($title === '' || $author === '') {
-            $err = 'Tiêu đề và tác giả không được để trống.';
+        if ($code === '' || $title === '' || $author === '') {
+            $err = 'Mã sách, tiêu đề, tác giả không được để trống.';
         } else {
-            // Kiểm tra trùng mã sách
+            // check trùng mã
             $check = $pdo->prepare("SELECT COUNT(*) FROM books WHERE code = ?");
             $check->execute([$code]);
             if ($check->fetchColumn() > 0) {
@@ -36,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // ----- UPLOAD ẢNH BÌA (NẾU CÓ) -----
+        // upload ảnh (nếu có)
         if (!$err && !empty($_FILES['cover']['name'])) {
             $target_dir = "uploads/books/";
             if (!is_dir($target_dir)) {
@@ -47,39 +45,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $allowed = ['jpg','jpeg','png','gif','webp'];
 
             if (!in_array($ext, $allowed)) {
-                $err = "Chỉ chấp nhận ảnh .jpg, .jpeg, .png, .gif, .webp";
+                $err = 'Chỉ chấp nhận ảnh .jpg, .jpeg, .png, .gif, .webp';
             } else {
                 $filename    = uniqid('book_') . '.' . $ext;
                 $target_file = $target_dir . $filename;
-
                 if (move_uploaded_file($_FILES['cover']['tmp_name'], $target_file)) {
                     $cover = $filename;
                 } else {
-                    $err = "Không thể tải ảnh bìa lên.";
+                    $err = 'Không thể tải ảnh bìa lên.';
                 }
             }
         }
 
-        // ----- LƯU VÀO CSDL -----
         if (!$err) {
-            $available = $total; // lúc mới nhập: còn = tổng
+            $data = [
+                'code'        => $code,
+                'title'       => $title,
+                'author'      => $author,
+                'category_id' => $category_id,
+                'total'       => $total,
+                'available'   => $total,
+                'cover'       => $cover,
+            ];
 
-            // CÁC CỘT: code, title, author, category_id, total, available, cover
-            $stmt = $pdo->prepare("
-                INSERT INTO books (code, title, author, category_id, total, available, cover)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $code,
-                $title,
-                $author,
-                $category_id,
-                $total,
-                $available,
-                $cover
-            ]);
-
-            audit_log('add_book', "Added book: $title (code=$code, id=" . $pdo->lastInsertId() . ")");
+            $newId = $bookDao->insert($data);
+            audit_log('add_book', "Added book id=$newId code=$code title=$title");
             flash_set('success', 'Thêm sách mới thành công.');
             header('Location: books.php');
             exit;
@@ -90,60 +80,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 include 'header.php';
 ?>
 
+<link rel="stylesheet" href="assets/css/books.css">
+
 <div class="book-form-container">
   <div class="book-form-card">
     <h2 class="page-title">📘 Thêm sách mới</h2>
 
     <?php if ($err): ?>
-      <p style="color:#d00000; margin-bottom:12px;"><?= e($err) ?></p>
+      <p style="color:red;"><?= e($err) ?></p>
     <?php endif; ?>
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" class="form-add-book">
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
 
-      <!-- MÃ SÁCH -->
       <div class="form-group">
         <label>Mã sách <span class="required">*</span></label>
         <input name="code" value="<?= e($_POST['code'] ?? '') ?>" required>
       </div>
 
-      <!-- TIÊU ĐỀ -->
       <div class="form-group">
         <label>Tiêu đề <span class="required">*</span></label>
         <input name="title" value="<?= e($_POST['title'] ?? '') ?>" required>
       </div>
 
-      <!-- TÁC GIẢ -->
       <div class="form-group">
         <label>Tác giả <span class="required">*</span></label>
         <input name="author" value="<?= e($_POST['author'] ?? '') ?>" required>
       </div>
 
-      <!-- THỂ LOẠI -->
       <div class="form-group">
         <label>Thể loại</label>
         <select name="category_id">
           <option value="">-- Chọn thể loại --</option>
           <?php foreach ($cats as $c): ?>
             <option value="<?= e($c['id']) ?>"
-              <?= (isset($_POST['category_id']) && $_POST['category_id'] == $c['id']) ? 'selected' : '' ?>>
+              <?= (($_POST['category_id'] ?? '') == $c['id']) ? 'selected' : '' ?>>
               <?= e($c['name']) ?>
             </option>
           <?php endforeach; ?>
         </select>
       </div>
 
-      <!-- TỔNG SỐ BẢN -->
       <div class="form-group">
         <label>Tổng số bản <span class="required">*</span></label>
         <input type="number" name="total" min="1"
                value="<?= e($_POST['total'] ?? 1) ?>" required>
       </div>
 
-      <!-- ẢNH BÌA -->
       <div class="form-group">
         <label>Ảnh bìa sách</label>
-        <input type="file" name="cover" accept="image/*">
+        <input type="file" name="cover" accept="image/*" onchange="previewImage(event)">
+        <div id="coverPreview" class="preview-box"></div>
       </div>
 
       <div class="form-actions">
@@ -154,4 +141,22 @@ include 'header.php';
   </div>
 </div>
 
+<script>
+function previewImage(event) {
+  const preview = document.getElementById('coverPreview');
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.innerHTML = `<img src="${e.target.result}" alt="Ảnh xem trước">`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.innerHTML = '';
+  }
+}
+</script>
+
 <?php include 'footer.php'; ?>
+
+

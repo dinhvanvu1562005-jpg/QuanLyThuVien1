@@ -1,25 +1,35 @@
 <?php
 require_once 'functions.php';
-require_role(['thuthu', 'admin']);
+require_login();
+require_role(['thuthu','admin']);
+
+require_once __DIR__ . '/dao/BorrowDAO.php';
+global $pdo;
+$borrowDao = new BorrowDAO($pdo);
 
 $id = intval($_GET['id'] ?? 0);
-if (!$id) { header('Location: borrow.php'); exit; }
-
-$stmt = $pdo->prepare("SELECT * FROM borrow WHERE id = ? AND status = 'borrowed'");
-$stmt->execute([$id]);
-$rec = $stmt->fetch();
-if (!$rec) {
-    $_SESSION['flash'] = 'Phiếu mượn không tồn tại hoặc đã trả.';
-    header('Location: borrow.php'); exit;
+if (!$id) {
+    header('Location: borrow_list.php');
+    exit;
 }
 
-$pdo->prepare("UPDATE borrow SET status='returned', return_date = ? WHERE id = ?")
-    ->execute([date('Y-m-d'), $id]);
+// Trả sách
+$rec = $borrowDao->returnBook($id, date('Y-m-d'));
+if (!$rec) {
+    flash_set('error', 'Phiếu mượn không tồn tại hoặc đã trả.');
+    header('Location: borrow_list.php');
+    exit;
+}
 
-$pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?")->execute([$rec['book_id']]);
+// Tăng available cho sách
+$pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?")
+    ->execute([$rec['book_id']]);
 
-audit_log('return_book', "Return borrow_id=$id book_id=".$rec['book_id']." by reader_id=".$rec['reader_id']);
-$_SESSION['flash'] = 'Trả sách thành công.';
-header('Location: borrow.php');
+audit_log(
+    'return_book',
+    "Return borrow_id=$id book_id=".$rec['book_id']." reader_id=".$rec['reader_id']
+);
+flash_set('success', 'Trả sách thành công.');
+header('Location: borrow_list.php');
 exit;
 

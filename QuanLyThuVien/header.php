@@ -46,9 +46,15 @@ $active = basename($_SERVER['PHP_SELF']);
                 👥 Quản lý bạn đọc
             </a>
 
-            <a href="borrow.php"
-               class="menu-item <?= $active === 'borrow.php' ? 'active-menu' : '' ?>">
-                📖 Quản lý mượn – trả
+            <a href="borrow_list.php"
+   class="menu-item <?= $active === 'borrow_list.php' ? 'active-menu' : '' ?>">
+    📖 Quản lý mượn – trả
+</a>
+
+            <!-- MỚI: Thống kê cho Thủ thư -->
+            <a href="statistics.php"
+               class="menu-item <?= $active === 'statistics.php' ? 'active-menu' : '' ?>">
+                📊 Thống kê
             </a>
         </div>
 

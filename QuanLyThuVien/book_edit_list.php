@@ -40,39 +40,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$oldBook) {
                 $err = 'Sách không tồn tại.';
             } else {
-                $title       = trim($_POST['title'] ?? '');
-                $author      = trim($_POST['author'] ?? '');
+                $title  = trim($_POST['title'] ?? '');
+                $author = trim($_POST['author'] ?? '');
                 $category_id = $_POST['category_id'] ?: null;
-                $total       = max(0, intval($_POST['total'] ?? 0));
-                $isbn        = trim($_POST['isbn'] ?? '');
+                $total  = max(0, intval($_POST['total'] ?? 0));
+
+                // Giữ cover cũ nếu không upload mới
+                $cover = $oldBook['cover'] ?? null;
 
                 if ($title === '') {
                     $err = 'Tên sách không được để trống.';
                 } elseif ($author === '') {
                     $err = 'Tác giả không được để trống.';
                 } else {
-                    // Tính lại available: giữ số lượng đang mượn
-                    $diff      = $total - $oldBook['total'];
-                    $available = $oldBook['available'] + $diff;
-                    if ($available < 0) $available = 0;
 
-                    $update = $pdo->prepare(
-                        "UPDATE books 
-                         SET title = ?, author = ?, category_id = ?, total = ?, available = ?, isbn = ?
-                         WHERE id = ?"
-                    );
-                    $update->execute([
-                        $title,
-                        $author,
-                        $category_id,
-                        $total,
-                        $available,
-                        $isbn,
-                        $currentId
-                    ]);
+                    // Nếu có upload ảnh mới
+                    if (!empty($_FILES['cover']['name']) && $_FILES['cover']['error'] === UPLOAD_ERR_OK) {
+                        $target_dir = "uploads/books/";
+                        if (!is_dir($target_dir)) {
+                            mkdir($target_dir, 0777, true);
+                        }
 
-                    audit_log('edit_book', "Edit book id=$currentId title=$title");
-                    $success = 'Cập nhật thông tin sách thành công.';
+                        $ext     = strtolower(pathinfo($_FILES['cover']['name'], PATHINFO_EXTENSION));
+                        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+                        if (!in_array($ext, $allowed)) {
+                            $err = "Chỉ chấp nhận ảnh .jpg, .jpeg, .png, .gif, .webp";
+                        } else {
+                            $filename    = uniqid('book_') . "." . $ext;
+                            $target_file = $target_dir . $filename;
+
+                            if (move_uploaded_file($_FILES['cover']['tmp_name'], $target_file)) {
+                                $cover = $filename;
+                            } else {
+                                $err = "Không thể tải ảnh bìa lên.";
+                            }
+                        }
+                    }
+
+                    if (!$err) {
+                        // Tính lại available: giữ số lượng đang mượn
+                        $diff = $total - $oldBook['total'];
+                        $available = $oldBook['available'] + $diff;
+                        if ($available < 0) $available = 0;
+
+                        $update = $pdo->prepare(
+                            "UPDATE books 
+                             SET title = ?, author = ?, category_id = ?, total = ?, available = ?, cover = ?
+                             WHERE id = ?"
+                        );
+                        $update->execute([
+                            $title,
+                            $author,
+                            $category_id,
+                            $total,
+                            $available,
+                            $cover,
+                            $currentId
+                        ]);
+
+                        audit_log('edit_book', "Edit book id=$currentId title=$title");
+                        $success = 'Cập nhật thông tin sách thành công.';
+
+                        // Cập nhật lại $books để bảng phía trên hiện mới
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute();
+                        $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    }
                 }
             }
         }
@@ -89,6 +123,8 @@ if ($currentId > 0) {
 
 include 'header.php';
 ?>
+
+<link rel="stylesheet" href="assets/style.css">
 
 <div class="edit-wrapper">
 
@@ -144,7 +180,7 @@ include 'header.php';
   <?php if (!$currentBook): ?>
     <p>Vui lòng chọn một cuốn sách trong danh sách bên trên để sửa.</p>
   <?php else: ?>
-    <form method="post" class="edit-form">
+    <form method="post" class="edit-form" enctype="multipart/form-data">
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
       <input type="hidden" name="id" value="<?= e($currentBook['id']) ?>">
 
@@ -180,9 +216,19 @@ include 'header.php';
       </div>
 
       <div class="form-row">
-        <label>ISBN</label>
-        <input type="text" name="isbn"
-               value="<?= e($_POST['isbn'] ?? $currentBook['isbn']) ?>">
+        <label>Ảnh bìa sách</label>
+
+        <?php if (!empty($currentBook['cover'])): ?>
+          <div class="preview-box" style="margin-bottom:8px;">
+            <img src="uploads/books/<?= e($currentBook['cover']) ?>" alt="Ảnh bìa hiện tại"
+                 style="max-width: 120px; border-radius:6px; box-shadow:0 3px 8px rgba(0,0,0,0.15);">
+          </div>
+        <?php else: ?>
+          <small>Chưa có ảnh bìa.</small><br>
+        <?php endif; ?>
+
+        <input type="file" name="cover" accept="image/*">
+        <small>Nếu không chọn ảnh mới thì hệ thống giữ nguyên ảnh cũ.</small>
       </div>
 
       <div class="form-actions">
@@ -195,3 +241,4 @@ include 'header.php';
 </div>
 
 <?php include 'footer.php'; ?>
+

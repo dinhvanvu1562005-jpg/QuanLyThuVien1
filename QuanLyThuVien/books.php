@@ -1,50 +1,33 @@
 <?php
 require_once 'functions.php';
 require_login();
-require_role(['thuthu', 'admin']); // chỉ thủ thư + admin mới xem được
+require_role(['thuthu', 'admin']);
 
+require_once __DIR__ . '/dao/BookDAO.php';
 global $pdo;
+$bookDao = new BookDAO($pdo);
 
-// Lấy từ khóa tìm kiếm
+// CONTROLLER
 $keyword = trim($_GET['q'] ?? '');
-$params  = [];
+$books   = $bookDao->search($keyword);
 
-$sql = "SELECT b.*, c.name AS category_name
-        FROM books b
-        LEFT JOIN categories c ON b.category_id = c.id";
-
-if ($keyword !== '') {
-    $sql .= " WHERE b.title  LIKE :kw
-              OR b.author   LIKE :kw
-              OR b.code     LIKE :kw";
-    $params[':kw'] = '%' . $keyword . '%';
-}
-
-$sql .= " ORDER BY b.title ASC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$books = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Gọi header (có menu, <html>, <body>, <main>...)
+// VIEW
 include 'header.php';
 ?>
-
-<link rel="stylesheet" href="assets/css/books.css">
 
 <div class="content-container">
   <h2 class="page-title">🔍 Tìm kiếm sách</h2>
 
-  <!-- Form tìm kiếm -->
   <form method="get" class="search-bar">
     <input
       type="text"
       name="q"
       class="search-input"
-      placeholder="Nhập tên sách / tác giả / mã sách để tìm"
+      placeholder="Nhập tên sách / tác giả"
       value="<?= e($keyword) ?>"
     >
-    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+    <button type="submit" class="btn btn-primary">Tìm</button>
+    <a href="book_add.php" class="btn btn-success">➕ Nhập sách mới</a>
   </form>
 
   <div class="table-wrapper">
@@ -52,6 +35,7 @@ include 'header.php';
       <thead>
         <tr>
           <th>#</th>
+          <th>Mã sách</th>
           <th>Tiêu đề</th>
           <th>Tác giả</th>
           <th>Thể loại</th>
@@ -62,58 +46,22 @@ include 'header.php';
       </thead>
       <tbody>
       <?php if (empty($books)): ?>
-        <tr>
-          <td colspan="7" class="no-data">Không tìm thấy sách nào.</td>
-        </tr>
+        <tr><td colspan="8" class="no-data">Không có sách nào.</td></tr>
       <?php else: ?>
         <?php foreach ($books as $i => $b): ?>
           <tr>
-            <!-- STT -->
             <td><?= $i + 1 ?></td>
-
-            <!-- Cột tiêu đề + ảnh bìa + mô tả -->
-            <td class="book-title-cell">
-              <div class="book-title-wrap">
-                <?php if (!empty($b['cover'])): ?>
-                  <img
-                    src="uploads/books/<?= e($b['cover']) ?>"
-                    alt="Bìa sách"
-                    class="book-thumb"
-                  >
-                <?php else: ?>
-                  <div class="book-thumb book-thumb-placeholder">
-                    📚
-                  </div>
-                <?php endif; ?>
-
-                <div class="book-text">
-                  <div class="book-title-main">
-                    <?= e($b['title']) ?>
-                  </div>
-                  <div class="book-meta">
-                    Mã: <?= e($b['code'] ?? '') ?>
-                    <?php if (!empty($b['author'])): ?>
-                      · Tác giả: <?= e($b['author']) ?>
-                    <?php endif; ?>
-                  </div>
-                </div>
-              </div>
-            </td>
-
-            <!-- Các cột còn lại -->
+            <td><?= e($b['code'] ?? '') ?></td>
+            <td><?= e($b['title']) ?></td>
             <td><?= e($b['author']) ?></td>
-            <td><?= e($b['category_name']) ?></td>
+            <td><?= e($b['category_name'] ?? '-') ?></td>
             <td><?= e($b['total']) ?></td>
             <td><?= e($b['available']) ?></td>
-
             <td class="actions">
-              <a
-                href="borrow_add.php?book_id=<?= e($b['id']) ?>"
-                class="btn-icon borrow"
-                title="Tạo phiếu mượn"
-              >
-                📖
-              </a>
+              <a href="book_edit.php?id=<?= e($b['id']) ?>" class="btn-icon edit">✏️</a>
+              <a href="book_delete.php?id=<?= e($b['id']) ?>"
+                 class="btn-icon delete"
+                 onclick="return confirm('Xóa sách này?');">🗑</a>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -124,3 +72,4 @@ include 'header.php';
 </div>
 
 <?php include 'footer.php'; ?>
+

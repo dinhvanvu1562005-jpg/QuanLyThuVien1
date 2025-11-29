@@ -31,30 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role']    = $user['role'] ?? null;
 
-            audit_log('login', "User logged in: " . $user['username']);
+            audit_log('login', 'User logged in: ' . $user['username']);
 
             // Điều hướng theo vai trò
             switch ($user['role']) {
                 case 'thuthu':
-                    // PHẦN CỦA BẠN – thủ thư
                     header('Location: borrow.php');
                     break;
-
                 case 'thukho':
-                    header('Location: books.php');          // ví dụ: trang quản lý kho sách
+                    header('Location: books.php');
                     break;
-
                 case 'capthe':
-                    header('Location: readers.php');        // ví dụ: trang cấp thẻ độc giả
+                    header('Location: readers.php');
                     break;
-
                 case 'taivu':
-                    header('Location: statistics.php');     // ví dụ: trang thống kê, tài vụ
+                    header('Location: statistics.php');
                     break;
-
                 case 'admin':
                 default:
-                    header('Location: books.php');          // admin vào trang chung
+                    header('Location: books.php');
                     break;
             }
             exit;
@@ -67,43 +62,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Đăng nhập hệ thống thư viện</title>
-  <link rel="stylesheet" href="assets/style.css">
+    <meta charset="UTF-8">
+    <title>Đăng nhập hệ thống thư viện</title>
+    <!-- thêm ?v=5 để chắc chắn load CSS mới -->
+    <link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body class="login-page">
-  <div class="login-page">
     <div class="login-box">
-      <div class="login-header">
-        <!-- Logo nhỏ gọn, chuẩn hệ thống thư viện -->
-        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="logo" class="logo">
-        <h1>Đăng nhập hệ thống</h1>
-      </div>
-
-      <?php if ($err): ?>
-        <div class="flash error"><?= htmlspecialchars($err) ?></div>
-      <?php endif; ?>
-
-      <form id="loginForm" method="post">
-        <input type="text"
-               name="username"
-               placeholder="Tên đăng nhập / Email / Số điện thoại"
-               value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
-               required>
-
-        <div class="password-wrapper">
-          <input type="password" id="password" name="password" placeholder="Mật khẩu" required>
-          <span id="togglePass" class="toggle-password">👁</span>
+        <div class="login-header">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png"
+                 alt="logo"
+                 class="logo">
+            <h1>Đăng nhập hệ thống</h1>
         </div>
 
-        <button type="submit" id="loginBtn">Đăng nhập</button>
-      </form>
+        <?php if ($err): ?>
+            <div class="flash error"><?= htmlspecialchars($err) ?></div>
+        <?php endif; ?>
 
-      <p style="margin-top:10px;">Chưa có tài khoản? <a href="register.php">Đăng ký ngay</a></p>
+        <form id="loginForm" method="post">
+            <input
+                type="text"
+                name="username"
+                placeholder="Tên đăng nhập / Email / Số điện thoại"
+                value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
+                required
+            >
+
+            <!-- Ô mật khẩu + icon 👁 -->
+            <div class="password-wrapper">
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Mật khẩu"
+                    required
+                >
+                <button
+                    type="button"
+                    id="togglePass"
+                    class="toggle-password"
+                    aria-label="Hiện / Ẩn mật khẩu"
+                >
+                    👁
+                </button>
+            </div>
+
+            <button type="submit" id="loginBtn">Đăng nhập</button>
+        </form>
+
+        <p style="margin-top:10px;">
+            Chưa có tài khoản? <a href="register.php">Đăng ký ngay</a>
+        </p>
     </div>
-  </div>
 
-  <script src="assets/login.js"></script>
+    <script src="assets/login.js"></script>
 </body>
 </html>
 
