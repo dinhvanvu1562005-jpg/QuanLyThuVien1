@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Nov 27, 2025 at 06:56 AM
+-- Generation Time: Nov 29, 2025 at 05:50 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -111,7 +111,36 @@ INSERT INTO `audit_log` (`id`, `user_id`, `action`, `detail`, `created_at`) VALU
 (73, 5, 'login - User logged in: thuthu', NULL, '2025-11-27 05:41:35'),
 (74, 5, 'logout - User logged out', NULL, '2025-11-27 05:41:49'),
 (75, 8, 'login - User logged in: capthe1', NULL, '2025-11-27 05:47:09'),
-(76, 8, 'logout - User logged out', NULL, '2025-11-27 05:47:25');
+(76, 8, 'logout - User logged out', NULL, '2025-11-27 05:47:25'),
+(77, 5, 'login - User logged in: thuthu', NULL, '2025-11-27 12:12:12'),
+(78, 5, 'logout - User logged out', NULL, '2025-11-27 12:12:30'),
+(79, 8, 'login - User logged in: capthe1', NULL, '2025-11-27 12:29:33'),
+(80, 8, 'logout - User logged out', NULL, '2025-11-27 12:29:42'),
+(81, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 12:03:53'),
+(82, 5, 'logout - User logged out', NULL, '2025-11-29 12:09:11'),
+(83, 8, 'login - User logged in: capthe1', NULL, '2025-11-29 12:09:41'),
+(84, 8, 'logout - User logged out', NULL, '2025-11-29 12:10:08'),
+(85, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 12:10:11'),
+(86, 5, 'logout - User logged out', NULL, '2025-11-29 12:37:48'),
+(87, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 12:43:52'),
+(88, 5, 'add_borrow - Borrow book_id=17 reader_id=2', NULL, '2025-11-29 12:47:01'),
+(89, 5, 'return_book - Return borrow_id=4, book_id=17, reader_id=2', NULL, '2025-11-29 13:00:51'),
+(90, 5, 'add_borrow - Borrow book_id=17 reader_id=2', NULL, '2025-11-29 13:07:40'),
+(91, 5, 'logout - User logged out', NULL, '2025-11-29 13:33:08'),
+(92, 8, 'login - User logged in: capthe1', NULL, '2025-11-29 13:33:15'),
+(93, 8, 'logout - User logged out', NULL, '2025-11-29 13:33:33'),
+(94, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 13:33:43'),
+(95, 5, 'logout - User logged out', NULL, '2025-11-29 13:58:18'),
+(96, 8, 'login - User logged in: capthe1', NULL, '2025-11-29 13:58:25'),
+(97, 8, 'logout - User logged out', NULL, '2025-11-29 13:58:41'),
+(98, 8, 'login - User logged in: capthe1', NULL, '2025-11-29 13:59:03'),
+(99, 8, 'logout - User logged out', NULL, '2025-11-29 13:59:11'),
+(100, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 14:01:24'),
+(101, 5, 'logout - User logged out', NULL, '2025-11-29 14:04:28'),
+(102, 8, 'login - User logged in: capthe1', NULL, '2025-11-29 14:04:34'),
+(103, 8, 'logout - User logged out', NULL, '2025-11-29 14:06:07'),
+(104, 5, 'login - User logged in: thuthu', NULL, '2025-11-29 15:41:47'),
+(105, 5, 'logout - User logged out', NULL, '2025-11-29 16:08:20');
 
 -- --------------------------------------------------------
 
@@ -143,7 +172,7 @@ CREATE TABLE `books` (
 
 INSERT INTO `books` (`id`, `code`, `title`, `author`, `description`, `publisher`, `publish_year`, `category_id`, `quantity`, `location`, `created_at`, `cover`, `isbn`, `total`, `available`) VALUES
 (16, 'DRPN', 'Sách - Đất Rừng Phương Nam  4.8  5 đánh giá', 'Nhà văn Đoàn Giỏi (1925 - 1989)', NULL, NULL, NULL, 2, 0, NULL, '2025-11-27 02:12:55', 'book_6927b3a77350b.jpg', NULL, 16, 16),
-(17, 'DM1', 'Sách - Dế Mèn Phiêu Lưu Ký (tái bản 2023)', 'Tô Hoài', NULL, NULL, NULL, 2, 0, NULL, '2025-11-27 02:13:30', 'book_6927b3ca25780.jpg', NULL, 18, 18);
+(17, 'DM1', 'Sách - Dế Mèn Phiêu Lưu Ký (tái bản 2023)', 'Tô Hoài', NULL, NULL, NULL, 2, 0, NULL, '2025-11-27 02:13:30', 'book_6927b3ca25780.jpg', NULL, 18, 17);
 
 -- --------------------------------------------------------
 
@@ -162,6 +191,30 @@ CREATE TABLE `borrow` (
   `status` enum('dang_muon','da_tra','qua_han') DEFAULT 'dang_muon',
   `fine` decimal(10,2) DEFAULT 0.00,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `borrow`
+--
+
+INSERT INTO `borrow` (`id`, `reader_id`, `user_id`, `book_id`, `borrow_date`, `due_date`, `return_date`, `status`, `fine`, `created_at`) VALUES
+(4, 2, 5, 17, '2025-11-29', '2025-11-29', '2025-11-29', 'da_tra', 0.00, '2025-11-29 12:47:01'),
+(5, 2, 5, 17, '2025-11-29', '2025-12-29', NULL, 'dang_muon', 0.00, '2025-11-29 13:07:40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cards`
+--
+
+CREATE TABLE `cards` (
+  `id` int(11) NOT NULL,
+  `reader_id` int(11) NOT NULL,
+  `card_code` varchar(50) NOT NULL,
+  `issue_date` date DEFAULT NULL,
+  `expire_date` date DEFAULT NULL,
+  `status` enum('active','locked') DEFAULT 'active',
+  `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -267,6 +320,13 @@ ALTER TABLE `borrow`
   ADD KEY `fk_borrow_user` (`user_id`);
 
 --
+-- Indexes for table `cards`
+--
+ALTER TABLE `cards`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_cards_reader` (`reader_id`);
+
+--
 -- Indexes for table `categories`
 --
 ALTER TABLE `categories`
@@ -295,7 +355,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `audit_log`
 --
 ALTER TABLE `audit_log`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
 
 --
 -- AUTO_INCREMENT for table `books`
@@ -307,7 +367,13 @@ ALTER TABLE `books`
 -- AUTO_INCREMENT for table `borrow`
 --
 ALTER TABLE `borrow`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `cards`
+--
+ALTER TABLE `cards`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -350,6 +416,12 @@ ALTER TABLE `borrow`
   ADD CONSTRAINT `borrow_ibfk_1` FOREIGN KEY (`reader_id`) REFERENCES `readers` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `borrow_ibfk_2` FOREIGN KEY (`book_id`) REFERENCES `books` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_borrow_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
+-- Constraints for table `cards`
+--
+ALTER TABLE `cards`
+  ADD CONSTRAINT `fk_cards_reader` FOREIGN KEY (`reader_id`) REFERENCES `readers` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
